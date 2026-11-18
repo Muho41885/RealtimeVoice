@@ -30,8 +30,8 @@ class VoiceChangerService : Service() {
     @Volatile private var running = false
     @Volatile private var effect = "baby"
     private var audioThread: Thread? = null
-    private var recorder: AudioRecord? = null
-    private var player: AudioTrack? = null
+    @Volatile private var recorder: AudioRecord? = null
+    @Volatile private var player: AudioTrack? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -43,85 +43,100 @@ class VoiceChangerService : Service() {
             effect = intent.getStringExtra(EXTRA_EFFECT) ?: effect
             return START_NOT_STICKY
         }
+
         effect = intent?.getStringExtra(EXTRA_EFFECT) ?: effect
         if (!running) {
             val notification = buildNotification()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                )
             } else {
                 startForeground(NOTIFICATION_ID, notification)
             }
             running = true
             audioThread = Thread({ audioLoop() }, "voice-audio-loop").also { it.start() }
         }
+        // Do not stop on task removal: the foreground service owns the audio stream,
+        // not the Flutter activity, and continues while the app is backgrounded.
         return START_NOT_STICKY
     }
 
     private fun audioLoop() {
         Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
-        val minBytes = AudioRecord.getMinBufferSize(
-            SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
-        )
-        if (minBytes <= 0) {
-            stopSelf()
-            return
-        }
-        val bufferBytes = maxOf(minBytes, 4096)
-        val input = AudioRecord(
-            MediaRecorder.AudioSource.VOICE_RECOGNITION,
-            SAMPLE_RATE,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT,
-            bufferBytes * 2
-        )
-        val output = AudioTrack.Builder()
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build()
-            )
-            .setAudioFormat(
-                AudioFormat.Builder()
-                    .setSampleRate(SAMPLE_RATE)
-                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                    .build()
-            )
-            .setBufferSizeIn khaledBytes(bufferBytes * 2)
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .build()
-        recorder = input
-        player = output
+        var input: AudioRecord? = null
+        var output: AudioTrack? = null
         try {
-            input.startRecording()
-            output.play()
+            val minBytes = AudioRecord.getMinBufferSize(
+                SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
+            )
+            check(minBytes > 0) { "AudioRecord reported an unsupported audio configuration." }
+            val bufferBytes = maxOf(minBytes, 4096)
+            val inputRecord = AudioRecord(
+                MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                SAMPLE_RATE,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                bufferBytes * 2
+            )
+            input = inputRecord
+            check(inputRecord.state == AudioRecord.STATE_INITIALIZED) {
+                "Could not initialize the microphone audio recorder."
+            }
+
+            val outputTrack = AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setSampleRate(SAMPLE_RATE)
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build()
+                )
+                .setBufferSizeInBytes(bufferBytes * 2)
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .build()
+            output = outputTrack
+            check(outputTrack.state == AudioTrack.STATE_INITIALIZED) {
+                "Could not initialize audio playback."
+            }
+            recorder = inputRecord
+            player = outputTrack
+
+            inputRecord.startRecording()
+            outputTrack.play()
             val samples = ShortArray(bufferBytes / 2)
             var phase = 0.0
             while (running && !Thread.currentThread().isInterrupted) {
-                val count = input.read(samples, 0, samples.size)
+                val count = inputRecord.read(samples, 0, samples.size)
                 if (count > 0) {
                     phase = process(samples, count, effect, phase)
-                    output.write(samples, 0, count, AudioTrack.WRITE_BLOCKING)
+                    outputTrack.write(samples, 0, count, AudioTrack.WRITE_BLOCKING)
                 }
             }
-        } catch (_: SecurityException) {
-            stopSelf()
-        } catch (_: IllegalStateException) {
+        } catch (_: Exception) {
+            // Release resources and remove the foreground service if audio setup fails.
             stopSelf()
         } finally {
-            try { input.stop() } catch (_: Exception) {}
-            input.release()
-            output.pause()
-            output.flush()
-            output.release()
+            try { input?.stop() } catch (_: Exception) {}
+            input?.release()
+            output?.pause()
+            output?.flush()
+            output?.release()
             recorder = null
             player = null
             if (!running) stopSelf()
         }
     }
 
-    // Lightweight demo DSP: simple resampling for pitch and amplitude modulation for robot.
+    // Lightweight demo DSP: simple pitch resampling and amplitude modulation for robot.
     private fun process(data: ShortArray, count: Int, mode: String, phaseStart: Double): Double {
         val ratio = when (mode) {
             "baby" -> 1.45
@@ -129,23 +144,31 @@ class VoiceChangerService : Service() {
             "funny" -> 1.8
             else -> 1.0
         }
+        // Read from a copy so output samples don't overwrite source samples needed later.
+        val sourceSamples = data.copyOf(count)
         var phase = phaseStart
         for (i in 0 until count) {
             val source = ((i * ratio).toInt() % count).coerceIn(0, count - 1)
-            var sample = data[source].toDouble()
+            var sample = sourceSamples[source].toDouble()
             if (mode == "robot") {
                 sample *= sin(phase)
                 phase += 2.0 * PI * 38.0 / SAMPLE_RATE
                 if (phase >= 2.0 * PI) phase -= 2.0 * PI
             }
-            data[i] = sample.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+            data[i] = sample.toInt()
+                .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                .toShort()
         }
         return phase
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, "Canlı ses", NotificationManager.IMPORTANCE_LOW)
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Canlı ses",
+                NotificationManager.IMPORTANCE_LOW
+            )
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
     }
@@ -168,5 +191,3 @@ class VoiceChangerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 }
-
-private fun AudioTrack.Builder.setIn khaledBytes(value: Int): AudioTrack.Builder = setBufferSizeInBytes(value)

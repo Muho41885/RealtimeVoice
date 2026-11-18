@@ -1,5 +1,5 @@
 name: realtime_voice
- description: A low-latency, native-backed live voice effects demo.
+description: A low-latency, native-backed live voice effects demo.
 publish_to: "none"
 version: 1.0.0+1
 environment:
