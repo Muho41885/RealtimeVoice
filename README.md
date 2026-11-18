@@ -1,25 +1,39 @@
-# Realtime Voice — web demo
+# Realtime Voice — web demo and Android WebView shell
 
-Bu depo, masaüstü ve mobil tarayıcılarda çalışan tek sayfalık canlı ses efekti demosudur. `index.html` Web Audio API kullanır; sunucu, derleme aracı veya harici JavaScript paketi gerekmez.
+Bu depo, tarayıcıda çalışan ses efekti web sitesini ve Android APK içine gömülebilecek WebView kabuğunu içerir. Web sitesinin sesi cihazda işlenir; mikrofon verisi kaydedilmez veya sunucuya gönderilmez.
 
-## Çalıştırma
+## Web sitesini deneme
 
-Mikrofon erişimi güvenlik nedeniyle HTTPS veya `localhost` gerektirir. Dosyayı doğrudan `file://` ile açmak yerine GitHub Pages'e yayınlayın ya da yerel sunucu çalıştırın:
+Site: https://muho41885.github.io/RealtimeVoice/
+
+Mikrofon için siteyi HTTPS üzerinden açın ve **Canlıya al** düğmesine basınca çıkan tarayıcı iznini kabul edin. Canlı ses, mikrofon akışını efektlerle işleyip cihazın ses çıkışına yollar; sesi duymak için medya sesini açın ve kulaklık kullanın. Hoparlör sesi mikrofona geri beslenebilir.
+
+## Android APK / WebView
+
+Android WebView, web sayfası izninden ayrı olarak Android uygulamasının mikrofon iznine ve `WebChromeClient.onPermissionRequest` iznini sayfaya iletmesine ihtiyaç duyar. Bu depodaki `MainActivity.kt` artık yalnızca `https://muho41885.github.io` kaynağından gelen mikrofon isteğini kabul eder, Android'in `RECORD_AUDIO` çalışma zamanı iznini ister ve onaylandıktan sonra sayfaya ses yakalama izni verir. Manifestte internet ve mikrofon izinleri bulunur.
+
+Flutter ile Android proje kabuğunu oluşturup dosyaları yerlerine aldıktan sonra APK üretin:
 
 ```bash
-python3 -m http.server 8000
+flutter create --platforms=android --org com.example realtime_voice
 ```
 
-Ardından `http://localhost:8000` adresini açın. Tarayıcıda mikrofon izni verip efekt seçin ve **Canlıya al** düğmesine basın. Kulaklık kullanılması önerilir; hoparlörden mikrofonu dinlemek ses geri beslemesine neden olabilir.
+Bu depo içindeki `android/app/src/main/AndroidManifest.xml` ve `android/app/src/main/kotlin/com/example/realtime_voice/MainActivity.kt` dosyalarını oluşan projedeki karşılıklarıyla değiştirin. `namespace`/`applicationId` değerlerini `com.example.realtime_voice` ile eşleştirin. Android kaynaklarındaki `LaunchTheme`, `NormalTheme`, `applicationName` ve ikon dosyalarını koruyun. Ardından:
 
-## Tarayıcı ve arka plan sınırlamaları
+```bash
+flutter build apk
+```
 
-- Ses işleme tarayıcıda, cihaz üzerinde yapılır; kayıt veya sunucuya ses aktarımı yoktur.
-- Tarayıcı sekmesi kapatılırsa veya kullanıcı canlı modu durdurursa mikrofon akışı sonlandırılır.
-- Mobil tarayıcılar arka plana alınan sekmelerin sesini askıya alabilir veya sınırlayabilir. Web uygulaması arka planda sürekli mikrofon/ses çalışmasını garanti edemez; bu, Flutter/native foreground service özelliği değildir.
-- Web Audio efektleri filtreleme ve modülasyonla oluşturulan demodur; profesyonel pitch-shifting değildir. Efekt ve gecikme tarayıcıya/cihaza göre değişir.
-- Mikrofon için kullanıcı izni ve güvenli bağlam (HTTPS/localhost) gerekir.
+Kurulu APK'da Android **Ayarlar → Uygulamalar → Realtime Voice → İzinler → Mikrofon → Uygulamayı kullanırken izin ver** seçeneğini etkinleştirin. Uygulamayı açıp **Canlıya al** düğmesine basın ve Android'in izin penceresini de kabul edin. İzin sonradan Ayarlar'dan verildiyse WebView sayfasını yenileyip tekrar deneyin.
 
-## Yayınlama
+## Ses duyulmuyorsa
 
-`index.html` depo kökünde olduğundan GitHub Pages için `main` dalındaki `/ (root)` klasörünü seçin. İsterseniz aynı dosyayı HTTPS destekleyen başka bir statik hosta da yükleyebilirsiniz.
+- Telefonun medya sesini artırın; zil sesi seviyesi ayrı olabilir.
+- Kulaklık takın. Hoparlör-mikrofon geri beslemesini ve yankı engelleyicilerin sesi bastırmasını önler.
+- Mikrofon izninin hem Android uygulama ayarlarında hem de uygulama içindeki izin penceresinde açık olduğunu kontrol edin.
+- Sayfa HTTPS üzerinden açılmalıdır. APK içindeki WebView bu depodaki güvenli GitHub Pages adresini kullanır.
+- Bu kabukta ses, uygulama ekrandayken çalışır. Android mikrofon kullanımını sistem politikalarına göre sınırlar; uygulama zorla kapatıldığında ses sürmez.
+
+## Sınırlamalar
+
+Web Audio efektleri filtreleme ve modülasyonla yapılan bir demodur, profesyonel pitch-shifting değildir. WebView/cihaz/Android sürümüne göre gecikme ve ses yönlendirmesi değişebilir. Bu ortamda fiziksel Android cihazda APK derlemesi ve ses testi çalıştırılamadı; hedef cihazda mikrofon izni, kulaklık, hoparlör ve efektler ayrı ayrı doğrulanmalıdır. iOS arka plan mikrofonu/native app bu başlangıç kapsamına dahil değildir.

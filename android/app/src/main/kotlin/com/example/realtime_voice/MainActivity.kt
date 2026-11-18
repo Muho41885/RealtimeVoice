@@ -1,40 +1,115 @@
 package com.example.realtime_voice
 
-import android.content.Intent
-import android.os.Build
-import io.flutter.embedding.android.FlutterActivity
-import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.plugin.common.MethodChannel
+import android.Manifest
+import android.app.Activity
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Bundle
+import android.webkit.PermissionRequest
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.core.content.ContextCompat
 
-class MainActivity : FlutterActivity() {
-    private val channelName = "realtime_voice/audio"
+class MainActivity : Activity() {
+    companion object {
+        private const val AUDIO_PERMISSION_REQUEST = 701
+        private const val SITE_URL = "https://muho41885.github.io/RealtimeVoice/"
+        private const val SITE_HOST = "muho41885.github.io"
+    }
 
-    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
-            .setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "start" -> {
-                        val intent = Intent(this, VoiceChangerService::class.java)
-                            .putExtra(VoiceChangerService.EXTRA_EFFECT, call.argument<String>("effect") ?: "baby")
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
-                        else startService(intent)
-                        result.success(null)
+    private var webView: WebView? = null
+    private var pendingWebPermission: PermissionRequest? = null
+    private var pendingWebResources: Array<String> = emptyArray()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        val view = WebView(this)
+        webView = view
+        view.settings.javaScriptEnabled = true
+        view.settings.domStorageEnabled = true
+        view.settings.mediaPlaybackRequiresUserGesture = false
+        view.webViewClient = WebViewClient()
+        view.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: PermissionRequest) {
+                runOnUiThread {
+                    val origin = Uri.parse(request.origin.toString())
+                    if (origin.scheme != "https" || origin.host != SITE_HOST) {
+                        request.deny()
+                        return@runOnUiThread
                     }
-                    "setEffect" -> {
-                        val intent = Intent(this, VoiceChangerService::class.java)
-                            .setAction(VoiceChangerService.ACTION_SET_EFFECT)
-                            .putExtra(VoiceChangerService.EXTRA_EFFECT, call.argument<String>("effect") ?: "baby")
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
-                        else startService(intent)
-                        result.success(null)
+
+                    val audioResources = request.resources
+                        .filter { it == PermissionRequest.RESOURCE_AUDIO_CAPTURE }
+                        .toTypedArray()
+                    if (audioResources.isEmpty()) {
+                        request.deny()
+                        return@runOnUiThread
                     }
-                    "stop" -> {
-                        stopService(Intent(this, VoiceChangerService::class.java))
-                        result.success(null)
+
+                    if (ContextCompat.checkSelfPermission(
+                            this@MainActivity,
+                            Manifest.permission.RECORD_AUDIO
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        request.grant(audioResources)
+                    } else {
+                        pendingWebPermission?.deny()
+                        pendingWebPermission = request
+                        pendingWebResources = audioResources
+                        requestPermissions(
+                            arrayOf(Manifest.permission.RECORD_AUDIO),
+                            AUDIO_PERMISSION_REQUEST
+                        )
                     }
-                    else -> result.notImplemented()
                 }
             }
+
+            override fun onPermissionRequestCanceled(request: PermissionRequest) {
+                if (pendingWebPermission == request) {
+                    pendingWebPermission = null
+                    pendingWebResources = emptyArray()
+                }
+            }
+        }
+        setContentView(view)
+        view.loadUrl(SITE_URL)
+    }
+
+    @Deprecated("Deprecated in Android API; retained for compatibility with the Flutter template")
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != AUDIO_PERMISSION_REQUEST) return
+
+        val request = pendingWebPermission
+        pendingWebPermission = null
+        if (request != null && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+            request.grant(pendingWebResources)
+        } else {
+            request?.deny()
+        }
+        pendingWebResources = emptyArray()
+    }
+
+    @Deprecated("Deprecated in Android API")
+    override fun onBackPressed() {
+        val view = webView
+        if (view?.canGoBack() == true) view.goBack() else super.onBackPressed()
+    }
+
+    override fun onDestroy() {
+        pendingWebPermission?.deny()
+        pendingWebPermission = null
+        webView?.apply {
+            stopLoading()
+            destroy()
+        }
+        webView = null
+        super.onDestroy()
     }
 }
