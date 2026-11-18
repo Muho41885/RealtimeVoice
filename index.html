@@ -394,6 +394,158 @@
       .header-actions { gap: 6px; }
       .language { padding: 7px 8px; }
     }
+
+    /* Sesli Mesaj Oluştur & Paylaş Bölümü */
+    .voice-message-section {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+    }
+    .record-box {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .record-button {
+      width: 100%;
+      min-height: 52px;
+      border: 0;
+      border-radius: 14px;
+      color: #ffffff;
+      background: linear-gradient(105deg, #e03b5f, #b82346);
+      font-weight: 750;
+      font-size: 15px;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(224, 59, 95, .35);
+      transition: transform .18s, filter .18s, background .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .record-button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      filter: brightness(1.08);
+    }
+    .record-button:disabled {
+      opacity: .65;
+      cursor: wait;
+    }
+    .record-button.recording {
+      background: linear-gradient(105deg, #444054, #2a2838);
+      border: 1px solid rgba(255, 130, 150, .4);
+      color: #ffd2d8;
+      box-shadow: 0 0 20px rgba(255, 130, 150, .3);
+    }
+    .rec-pulse-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #ff4767;
+      box-shadow: 0 0 10px #ff4767;
+      display: inline-block;
+      animation: pulse 1s infinite;
+    }
+    .record-timer {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      color: var(--danger);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: .08em;
+    }
+    .record-timer.visible {
+      display: flex;
+    }
+    .audio-result-card {
+      margin-top: 16px;
+      background: #14131e;
+      border: 1px solid rgba(163, 147, 255, .25);
+      border-radius: 16px;
+      padding: 16px;
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      animation: popIn .25s ease-out;
+    }
+    .audio-result-card.visible {
+      display: flex;
+    }
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .result-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 99px;
+      background: #a393ff18;
+      border: 1px solid #a393ff44;
+      color: #c8bfff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .result-duration {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    audio {
+      width: 100%;
+      height: 42px;
+      border-radius: 10px;
+      outline: none;
+    }
+    .audio-actions {
+      display: grid;
+      grid-template-columns: 2fr 1.2fr 1fr;
+      gap: 9px;
+    }
+    .action-btn {
+      padding: 11px 12px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      border: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform .15s, filter .15s;
+    }
+    .action-btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.1);
+    }
+    .share-btn {
+      background: linear-gradient(105deg, #25d366, #128c7e);
+      color: #ffffff;
+      box-shadow: 0 4px 16px rgba(37, 211, 102, .3);
+    }
+    .download-btn {
+      background: #232230;
+      color: #f5f3ff;
+      border: 1px solid var(--line);
+    }
+    .reset-btn {
+      background: #1c1a26;
+      color: #aaa5bd;
+      border: 1px solid var(--line);
+    }
+    @media (max-width: 520px) {
+      .audio-actions {
+        grid-template-columns: 1fr;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -477,6 +629,46 @@
       </div>
 
       <div class="message" id="message" role="alert"></div>
+
+      <!-- Sesli Mesaj Oluştur & Paylaş -->
+      <div class="voice-message-section">
+        <div class="section-heading">
+          <h2 data-i18n="voiceMsgHeading">SESLİ MESAJ OLUŞTUR & PAYLAŞ</h2>
+          <span data-i18n="voiceMsgHint">Efektli ses kaydet, arkadaşlarına gönder</span>
+        </div>
+        
+        <div class="record-box">
+          <button class="record-button" id="recordButton" type="button">
+            <span class="rec-pulse-dot" id="recDot" style="display:none;"></span>
+            <span id="recordBtnText" data-i18n="recordButton">🔴 &nbsp; Efektli Sesli Mesaj Kaydet</span>
+          </button>
+          <div class="record-timer" id="recordTimer">
+            <span class="rec-pulse-dot"></span>
+            <span data-i18n="recordingLabel">KAYDEDİLİYOR</span>
+            <span id="recTime">00:00</span>
+          </div>
+        </div>
+
+        <div class="audio-result-card" id="audioResultCard">
+          <div class="result-header">
+            <div class="result-badge" id="resultEffectBadge">🧸 Bebek Sesi</div>
+            <span class="result-duration" id="resultDuration">00:00</span>
+          </div>
+          <audio id="audioPlayer" controls playsinline></audio>
+          <div class="audio-actions">
+            <button class="action-btn share-btn" id="shareBtn" type="button" data-i18n="shareBtn">
+              📤 &nbsp; Herkese Paylaş
+            </button>
+            <button class="action-btn download-btn" id="downloadBtn" type="button" data-i18n="downloadBtn">
+              💾 &nbsp; İndir
+            </button>
+            <button class="action-btn reset-btn" id="resetRecordBtn" type="button" data-i18n="reRecordBtn">
+              🔄 &nbsp; Yeni Kayıt
+            </button>
+          </div>
+        </div>
+      </div>
+
     </section>
 
     <p class="notice">
@@ -552,7 +744,18 @@
       errBusy: 'Mikrofon başka bir uygulama tarafından kullanılıyor. Diğer sesli uygulamaları kapatıp tekrar deneyin.',
       errTimeout: 'Mikrofon isteği zaman aşımına uğradı. İzin penceresini onaylayın ve tekrar deneyin.',
       errAudio: 'Ses başlatılamadı. Sayfayı yenileyip mikrofon iznini tekrar verin.',
-      errPlayback: 'Ses sistemi başlatılamadı. Tarayıcıyı yenileyin ve tekrar deneyin.'
+      errPlayback: 'Ses sistemi başlatılamadı. Tarayıcıyı yenileyin ve tekrar deneyin.',
+      voiceMsgHeading: 'SESLİ MESAJ OLUŞTUR & PAYLAŞ',
+      voiceMsgHint: 'Efektli ses kaydet, arkadaşlarına gönder',
+      recordButton: '🔴 &nbsp; Efektli Sesli Mesaj Kaydet',
+      recordingButton: '⏹️ &nbsp; Kaydı Bitir',
+      recordingLabel: 'KAYDEDİLİYOR',
+      shareBtn: '📤 &nbsp; Herkese Paylaş',
+      downloadBtn: '💾 &nbsp; İndir',
+      reRecordBtn: '🔄 &nbsp; Yeni Kayıt',
+      shareFallback: 'Ses dosyası cihazınıza indirildi! WhatsApp veya Telegram üzerinden kolayca paylaşabilirsiniz.',
+      shareSuccess: 'Sesli mesaj başarıyla paylaşıldı!',
+
     },
     en: {
       pageTitle: 'Realtime Voice — Change your voice',
@@ -599,7 +802,18 @@
       errBusy: 'Microphone is currently in use by another app. Please close other apps and try again.',
       errTimeout: 'Microphone request timed out. Please allow the prompt and try again.',
       errAudio: 'Could not start audio. Please reload and grant permission.',
-      errPlayback: 'Audio system failed to initialize. Please try again.'
+      errPlayback: 'Audio system failed to initialize. Please try again.',
+      voiceMsgHeading: 'CREATE & SHARE VOICE MESSAGE',
+      voiceMsgHint: 'Record with effect, send to friends',
+      recordButton: '🔴 &nbsp; Record Voice Message',
+      recordingButton: '⏹️ &nbsp; Stop Recording',
+      recordingLabel: 'RECORDING',
+      shareBtn: '📤 &nbsp; Share to Anyone',
+      downloadBtn: '💾 &nbsp; Download',
+      reRecordBtn: '🔄 &nbsp; New Record',
+      shareFallback: 'Audio file downloaded! You can share it on WhatsApp or Telegram.',
+      shareSuccess: 'Voice message shared successfully!',
+
     },
     ru: {
       pageTitle: 'Realtime Voice — Измени свой голос',
@@ -646,7 +860,18 @@
       errBusy: 'Микрофон занят другим приложением.',
       errTimeout: 'Время ожидания истекло.',
       errAudio: 'Не удалось запустить аудио.',
-      errPlayback: 'Ошибка аудиосистемы.'
+      errPlayback: 'Ошибка аудиосистемы.',
+      voiceMsgHeading: 'СОЗДАТЬ И ОТПРАВИТЬ ГОЛОСОВОЕ',
+      voiceMsgHint: 'Запишите голос с эффектом и отправьте друзьям',
+      recordButton: '🔴 &nbsp; Записать голосовое сообщение',
+      recordingButton: '⏹️ &nbsp; Завершить запись',
+      recordingLabel: 'ЗАПИСЬ',
+      shareBtn: '📤 &nbsp; Поделиться',
+      downloadBtn: '💾 &nbsp; Скачать',
+      reRecordBtn: '🔄 &nbsp; Новая запись',
+      shareFallback: 'Аудио скачано! Вы можете отправить его в WhatsApp или Telegram.',
+      shareSuccess: 'Голосовое сообщение отправлено!',
+
     }
   };
 
@@ -670,6 +895,8 @@
   let source = null;
   let analyser = null;
   let volumeNode = null;
+    recordDest = null;
+  let recordDest = null;
   let pitchShifter = null;
   let robotCarrier = null;
   let robotGain = null;
@@ -680,6 +907,28 @@
   let timerInterval = null;
   let animationFrame = 0;
   let startAttempt = 0;
+
+  /* Voice message recording variables */
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let recordedBlob = null;
+  let isRecordingMsg = false;
+  let recordStartTime = 0;
+  let recordTimerInterval = null;
+  let currentEffectName = 'baby';
+
+  const recordButton = $('#recordButton');
+  const recDot = $('#recDot');
+  const recordBtnText = $('#recordBtnText');
+  const recordTimer = $('#recordTimer');
+  const recTime = $('#recTime');
+  const audioResultCard = $('#audioResultCard');
+  const resultEffectBadge = $('#resultEffectBadge');
+  const resultDuration = $('#resultDuration');
+  const audioPlayer = $('#audioPlayer');
+  const shareBtn = $('#shareBtn');
+  const downloadBtn = $('#downloadBtn');
+  const resetRecordBtn = $('#resetRecordBtn');
 
   // Preset definitions with real Pitch Shifts and Filter Curves
   const presets = {
@@ -912,6 +1161,7 @@
   function setEffect(name) {
     const preset = presets[name];
     if (!preset) return;
+    currentEffectName = name;
 
     document.querySelectorAll('.effect').forEach(item => {
       const selected = item.dataset.effect === name;
@@ -977,27 +1227,45 @@
     }
   }
 
-  /* Robust getUserMedia helper for Browser + WebView + WebIntoApp */
-  function getAudioStream() {
-    const constraints = {
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: false
-      },
-      video: false
+  /* Robust getUserMedia helper with 8s Safety Timeout & Fallback for Android/WebView */
+  async function getAudioStream() {
+    const fetchStream = async () => {
+      const detailedConstraints = {
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: false
+        },
+        video: false
+      };
+
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          return await navigator.mediaDevices.getUserMedia(detailedConstraints);
+        } catch (strictErr) {
+          // Fallback to basic audio constraint if device fails on detailed constraints
+          return await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+      }
+
+      const legacyGUM = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+      if (legacyGUM) {
+        return new Promise((resolve, reject) => {
+          legacyGUM.call(navigator, { audio: true }, resolve, reject);
+        });
+      }
+      throw new Error('Tarayıcınız veya uygulamanız mikrofon erişimini desteklemiyor');
     };
 
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      return navigator.mediaDevices.getUserMedia(constraints);
-    }
-    const legacyGUM = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-    if (legacyGUM) {
-      return new Promise((resolve, reject) => {
-        legacyGUM.call(navigator, constraints, resolve, reject);
-      });
-    }
-    return Promise.reject(new Error('MediaDevices not supported'));
+    // 8-second timeout so it NEVER gets stuck on "Mikrofon izni bekleniyor"
+    return Promise.race([
+      fetchStream(),
+      new Promise((_, reject) => setTimeout(() => {
+        const err = new Error('Mikrofon izni zaman aşımına uğradı');
+        err.name = 'TimeoutError';
+        reject(err);
+      }, 8000))
+    ]);
   }
 
   async function start() {
@@ -1085,6 +1353,10 @@
       // Robot ring modulation modulation path
       robotCarrier.connect(robotGain);
       robotGain.connect(volumeNode.gain);
+
+      // Recording destination node
+      recordDest = audioContext.createMediaStreamDestination();
+      volumeNode.connect(recordDest);
 
       volumeNode.connect(analyser);
       analyser.connect(audioContext.destination);
@@ -1214,8 +1486,186 @@
     permOverlay.classList.remove('visible');
   });
 
+
+  /* --- Voice Message Recording & Sharing System --- */
+  function getSupportedAudioMime() {
+    const list = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/ogg',
+      'audio/mp4',
+      'audio/aac'
+    ];
+    for (const type of list) {
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported(type)) return type;
+    }
+    return '';
+  }
+
+  async function ensureAudioReady() {
+    if (!audioContext || audioContext.state === 'closed' || !stream) {
+      await start();
+    } else if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+    return running && recordDest;
+  }
+
+  async function startMessageRecording() {
+    if (isRecordingMsg) return;
+    clearError();
+
+    recordButton.disabled = true;
+    recordBtnText.textContent = t('startingButton');
+
+    try {
+      const ready = await ensureAudioReady();
+      if (!ready || !recordDest) {
+        throw new Error('Ses sistemi başlatılamadı');
+      }
+
+      recordedChunks = [];
+      const mime = getSupportedAudioMime();
+      const options = mime ? { mimeType: mime } : undefined;
+
+      mediaRecorder = new MediaRecorder(recordDest.stream, options);
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          recordedChunks.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const finalType = mime || (recordedChunks[0] ? recordedChunks[0].type : 'audio/webm') || 'audio/webm';
+        recordedBlob = new Blob(recordedChunks, { type: finalType });
+        const blobUrl = URL.createObjectURL(recordedBlob);
+
+        audioPlayer.src = blobUrl;
+        audioResultCard.classList.add('visible');
+
+        // Effect badge text
+        const effectEl = $(`.effect[data-effect="${currentEffectName}"] strong`);
+        const effectLabel = effectEl ? effectEl.textContent : currentEffectName;
+        resultEffectBadge.textContent = `${effectLabel} Sesi`;
+
+        const totalSecs = Math.max(1, Math.floor((Date.now() - recordStartTime) / 1000));
+        const durStr = `${String(Math.floor(totalSecs / 60)).padStart(2, '0')}:${String(totalSecs % 60).padStart(2, '0')}`;
+        resultDuration.textContent = durStr;
+      };
+
+      mediaRecorder.start(200); // chunk every 200ms
+      isRecordingMsg = true;
+      recordStartTime = Date.now();
+
+      recordButton.disabled = false;
+      recordButton.classList.add('recording');
+      recDot.style.display = 'inline-block';
+      recordBtnText.textContent = t('recordingButton');
+      recordTimer.classList.add('visible');
+
+      recordTimerInterval = setInterval(() => {
+        const diff = Math.floor((Date.now() - recordStartTime) / 1000);
+        recTime.textContent = `${String(Math.floor(diff / 60)).padStart(2, '0')}:${String(diff % 60).padStart(2, '0')}`;
+      }, 500);
+
+    } catch (err) {
+      isRecordingMsg = false;
+      recordButton.disabled = false;
+      recordButton.classList.remove('recording');
+      recDot.style.display = 'none';
+      recordBtnText.textContent = t('recordButton');
+      recordTimer.classList.remove('visible');
+      showError('errAudio');
+    }
+  }
+
+  function stopMessageRecording() {
+    if (!isRecordingMsg) return;
+    isRecordingMsg = false;
+    clearInterval(recordTimerInterval);
+
+    recordButton.classList.remove('recording');
+    recDot.style.display = 'none';
+    recordBtnText.textContent = t('recordButton');
+    recordTimer.classList.remove('visible');
+
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      try { mediaRecorder.stop(); } catch (_) {}
+    }
+  }
+
+  function toggleRecordVoiceMessage() {
+    if (isRecordingMsg) {
+      stopMessageRecording();
+    } else {
+      startMessageRecording();
+    }
+  }
+
+  function getAudioFileExtension() {
+    if (!recordedBlob) return 'webm';
+    if (recordedBlob.type.includes('ogg')) return 'ogg';
+    if (recordedBlob.type.includes('mp4') || recordedBlob.type.includes('aac')) return 'm4a';
+    return 'webm';
+  }
+
+  async function shareVoiceMessage() {
+    if (!recordedBlob) return;
+    const ext = getAudioFileExtension();
+    const fileName = `sesli-mesaj-${currentEffectName}.${ext}`;
+
+    try {
+      const file = new File([recordedBlob], fileName, { type: recordedBlob.type });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Realtime Voice Sesli Mesaj',
+          text: `Realtime Voice (${currentEffectName}) ile oluşturulan sesli mesaj:`
+        });
+        showInfo('shareSuccess');
+        return;
+      }
+    } catch (e) {
+      if (e.name === 'AbortError') return; // User closed the share menu
+    }
+
+    // Direct download fallback if Web Share is not available or cancelled
+    downloadVoiceMessage();
+    showInfo('shareFallback');
+  }
+
+  function downloadVoiceMessage() {
+    if (!recordedBlob) return;
+    const ext = getAudioFileExtension();
+    const fileName = `sesli-mesaj-${currentEffectName}.${ext}`;
+    const url = URL.createObjectURL(recordedBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1200);
+  }
+
+  function resetVoiceMessage() {
+    audioResultCard.classList.remove('visible');
+    audioPlayer.pause();
+    audioPlayer.src = '';
+    recordedBlob = null;
+    recordedChunks = [];
+  }
+
   /* UI Event Listeners */
   button.addEventListener('click', () => running ? stop() : start());
+  recordButton.addEventListener('click', toggleRecordVoiceMessage);
+  shareBtn.addEventListener('click', shareVoiceMessage);
+  downloadBtn.addEventListener('click', downloadVoiceMessage);
+  resetRecordBtn.addEventListener('click', resetVoiceMessage);
 
   document.querySelectorAll('.effect').forEach(item => {
     item.addEventListener('click', () => setEffect(item.dataset.effect));
