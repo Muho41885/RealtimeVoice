@@ -1,1 +1,312 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101016">
+  <meta name="description" content="Tarayıcında gerçek zamanlı ses efektleri dene. Sesin cihazından çıkmaz.">
+  <title>Realtime Voice — Sesini değiştir</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101016;
+      --panel: #191922;
+      --panel-2: #20202c;
+      --line: rgba(255,255,255,.09);
+      --text: #f5f3ff;
+      --muted: #a4a1b4;
+      --purple: #a393ff;
+      --purple-dark: #7662ed;
+      --mint: #89f0c5;
+      --danger: #ff8296;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% -18%, #282044 0, var(--bg) 49%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button { font: inherit; }
+    .shell { width: min(100% - 32px, 940px); margin: 0 auto; padding: 26px 0 42px; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .brand { display:flex; gap:11px; align-items:center; font-weight:750; letter-spacing:-.03em; }
+    .brand-mark { width:37px; height:37px; display:grid; place-items:center; border-radius:12px; color:#171326; background:linear-gradient(145deg,#c1b6ff,#7865ee); box-shadow:0 6px 24px #7865ee40; }
+    .brand-mark svg { width:20px; }
+    .local-tag { color:var(--mint); background:#89f0c510; border:1px solid #89f0c52d; border-radius:99px; padding:7px 11px; font-size:12px; font-weight:650; }
+    main { padding-top:56px; }
+    .intro { text-align:center; }
+    .eyebrow { color:var(--purple); text-transform:uppercase; letter-spacing:.16em; font-weight:750; font-size:11px; }
+    h1 { margin:12px 0 10px; font-size:clamp(34px,6vw,54px); line-height:1.04; letter-spacing:-.055em; }
+    .sub { margin:0 auto; max-width:540px; color:var(--muted); line-height:1.65; font-size:15px; }
+    .studio { margin:38px auto 0; max-width:720px; padding:22px; background:linear-gradient(155deg,#1d1b29,#17171f 70%); border:1px solid var(--line); border-radius:25px; box-shadow:0 28px 80px #0005; }
+    .visual { position:relative; height:132px; overflow:hidden; background:radial-gradient(ellipse at 50% 100%,#7160ef20,transparent 65%),#12121a; border:1px solid #ffffff0a; border-radius:17px; }
+    canvas { width:100%; height:100%; display:block; }
+    .visual-label { position:absolute; inset:0; display:grid; place-items:center; color:#aaa6bb; font-size:13px; pointer-events:none; }
+    .live-indicator { display:none; align-items:center; gap:8px; color:var(--mint); font-weight:700; font-size:12px; letter-spacing:.12em; }
+    .live-indicator.visible { display:flex; }
+    .dot { width:8px; height:8px; border-radius:50%; background:var(--mint); box-shadow:0 0 12px var(--mint); animation:pulse 1.3s infinite; }
+    @keyframes pulse { 50% { opacity:.35; transform:scale(.8); } }
+    .status-row { height:32px; display:flex; justify-content:center; align-items:center; }
+    .live-button { width:100%; min-height:58px; border:0; border-radius:15px; color:#171326; background:linear-gradient(105deg,#b7aaff,#8c78ff); font-weight:800; letter-spacing:.015em; cursor:pointer; box-shadow:0 9px 28px #806cf044; transition:transform .18s,filter .18s; }
+    .live-button:hover:not(:disabled) { transform:translateY(-2px); filter:brightness(1.08); }
+    .live-button:disabled { opacity:.68; cursor:wait; }
+    .live-button.stop { color:white; background:linear-gradient(105deg,#c64d70,#a93658); box-shadow:0 9px 28px #c64d7040; }
+    .section-heading { display:flex; align-items:center; justify-content:space-between; margin:27px 2px 12px; }
+    .section-heading h2 { margin:0; font-size:12px; color:#d5d1e4; letter-spacing:.13em; }
+    .section-heading span { color:var(--muted); font-size:12px; }
+    .effects { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    .effect { text-align:left; color:var(--text); padding:14px 13px; min-height:92px; border-radius:15px; border:1px solid var(--line); background:#ffffff04; cursor:pointer; transition:.18s ease; }
+    .effect:hover { background:#ffffff09; border-color:#a393ff55; }
+    .effect.selected { background:#a393ff13; border-color:#a393ff9c; box-shadow:inset 0 0 0 1px #a393ff12; }
+    .effect-icon { font-size:19px; display:block; margin-bottom:9px; }
+    .effect strong { display:block; font-size:13px; }
+    .effect small { display:block; color:var(--muted); font-size:11px; margin-top:4px; }
+    .bottom-row { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-top:17px; color:var(--muted); font-size:12px; }
+    .volume { display:flex; align-items:center; gap:9px; min-width:190px; }
+    .volume input { width:100px; accent-color:var(--purple); }
+    .message { display:none; margin-top:14px; padding:12px 14px; border-radius:12px; color:#ffd2d8; background:#ff829614; border:1px solid #ff82962e; font-size:13px; line-height:1.5; }
+    .message.visible { display:block; }
+    .notice { margin:18px auto 0; max-width:720px; color:#a9a6b5; font-size:12px; line-height:1.6; text-align:center; }
+    .notice strong { color:#d4d0e0; }
+    footer { margin-top:42px; text-align:center; font-size:12px; color:#777485; }
+    :focus-visible { outline:2px solid #b7aaff; outline-offset:3px; }
+    @media (max-width:620px) {
+      .shell { width:min(100% - 22px, 940px); padding-top:17px; }
+      main { padding-top:42px; }
+      .studio { padding:14px; margin-top:27px; border-radius:20px; }
+      .effects { grid-template-columns:repeat(2,1fr); }
+      .effect { min-height:84px; }
+      .bottom-row { align-items:flex-start; flex-direction:column; }
+      .volume { width:100%; }
+      .volume input { flex:1; }
+      .local-tag { font-size:10px; padding:6px 8px; }
+    }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 10v4m4-8v12m4-15v18m4-13v8m4-11v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></span><span>Realtime Voice</span></div>
+      <span class="local-tag">●&nbsp; Ses cihazında işlenir</span>
+    </header>
 
+    <main>
+      <section class="intro" aria-labelledby="title">
+        <div class="eyebrow">Tarayıcıda canlı ses stüdyosu</div>
+        <h1 id="title">Sesine başka bir<br>hava kat.</h1>
+        <p class="sub">Bir efekt seç, mikrofonunu aç ve sesini anında dinle. Kayıt yok; sesin sunucuya gönderilmez.</p>
+      </section>
+
+      <section class="studio" aria-label="Canlı ses değiştirici">
+        <div class="visual"><canvas id="visualizer" aria-label="Canlı ses dalga görselleştirmesi"></canvas><div class="visual-label" id="visualLabel">Canlı sesi başlatınca dalga burada görünür</div></div>
+        <div class="status-row"><div class="live-indicator" id="liveIndicator"><span class="dot"></span><span>CANLI</span><span id="timer">00:00</span></div></div>
+        <button class="live-button" id="liveButton" type="button">🎙️ &nbsp; Canlıya al</button>
+
+        <div class="section-heading"><h2>SES EFEKTLERİ</h2><span>Efektler canlı değişir</span></div>
+        <div class="effects" role="group" aria-label="Ses efekti seç">
+          <button class="effect selected" type="button" data-effect="baby" aria-pressed="true"><span class="effect-icon">🧸</span><strong>Bebek</strong><small>Parlak ve hafif</small></button>
+          <button class="effect" type="button" data-effect="robot" aria-pressed="false"><span class="effect-icon">🤖</span><strong>Robot</strong><small>Metalik titreşim</small></button>
+          <button class="effect" type="button" data-effect="deep" aria-pressed="false"><span class="effect-icon">🎙️</span><strong>Kalın</strong><small>Sıcak ve tok</small></button>
+          <button class="effect" type="button" data-effect="funny" aria-pressed="false"><span class="effect-icon">😜</span><strong>Komik</strong><small>Tiz ve enerjik</small></button>
+        </div>
+
+        <div class="bottom-row">
+          <span>🎧&nbsp; Yankıyı önlemek için kulaklık önerilir.</span>
+          <label class="volume" for="volume"><span>Ses seviyesi</span><input id="volume" type="range" min="0" max="100" value="75"><span id="volumeValue">75%</span></label>
+        </div>
+        <div class="message" id="message" role="alert"></div>
+      </section>
+      <p class="notice"><strong>Gizlilik:</strong> Mikrofon erişimi yalnızca canlı moddayken kullanılır. Durdurduğunda mikrofon akışı kapatılır. Bu demo mobil tarayıcı sekmesi arka plana alındığında duraklayabilir; arka planda çalışma garantisi vermez.</p>
+    </main>
+    <footer>Realtime Voice · Web Audio API ile çalışır</footer>
+  </div>
+
+  <script>
+    (() => {
+      const button = document.getElementById('liveButton');
+      const message = document.getElementById('message');
+      const visualLabel = document.getElementById('visualLabel');
+      const indicator = document.getElementById('liveIndicator');
+      const timer = document.getElementById('timer');
+      const canvas = document.getElementById('visualizer');
+      const volumeSlider = document.getElementById('volume');
+      const volumeValue = document.getElementById('volumeValue');
+      const ctx = canvas.getContext('2d');
+      let audioContext, stream, source, analyser, volumeNode, robotOscillator, robotDepth;
+      let running = false, startedAt = 0, timerInterval, animationFrame;
+
+      const presets = {
+        baby:  { low: -4, mid: 5, high: 5, distortion: 0, robot: false },
+        robot: { low: 1, mid: 2, high: 3, distortion: 34, robot: true },
+        deep:  { low: 8, mid: -2, high: -5, distortion: 0, robot: false },
+        funny: { low: -7, mid: 3, high: 9, distortion: 12, robot: false }
+      };
+      let filters = {};
+      const setParam = (param, value) => param.setTargetAtTime(value, audioContext.currentTime, .035);
+
+      function distortionCurve(amount) {
+        const samples = 44100;
+        const curve = new Float32Array(samples);
+        const k = amount;
+        for (let i = 0; i < samples; i++) {
+          const x = i * 2 / samples - 1;
+          curve[i] = k === 0 ? x : (3 + k) * x * 20 * (Math.PI / 180) / (Math.PI + k * Math.abs(x));
+        }
+        return curve;
+      }
+
+      function setEffect(name) {
+        document.querySelectorAll('.effect').forEach(item => {
+          const active = item.dataset.effect === name;
+          item.classList.toggle('selected', active);
+          item.setAttribute('aria-pressed', String(active));
+        });
+        if (!audioContext || !filters.tone) return;
+        const preset = presets[name];
+        setParam(filters.tone.gain, preset.low);
+        setParam(filters.presence.gain, preset.mid);
+        setParam(filters.air.gain, preset.high);
+        filters.shaper.curve = distortionCurve(preset.distortion);
+        setParam(robotDepth.gain, preset.robot ? .32 : 0);
+        setParam(volumeNode.gain, Number(volumeSlider.value) / 100 * (preset.robot ? .68 : 1));
+      }
+
+      function showError(text) { message.textContent = text; message.classList.add('visible'); }
+      function clearError() { message.textContent = ''; message.classList.remove('visible'); }
+
+      async function start() {
+        clearError();
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          showError('Mikrofon bu ortamda kullanılamıyor. HTTPS üzerinden veya localhost adresinde açmayı deneyin.');
+          return;
+        }
+        button.disabled = true;
+        button.textContent = 'Mikrofon başlatılıyor…';
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false },
+            video: false
+          });
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          await audioContext.resume();
+          source = audioContext.createMediaStreamSource(stream);
+          filters.tone = audioContext.createBiquadFilter();
+          filters.tone.type = 'lowshelf';
+          filters.tone.frequency.value = 220;
+          filters.presence = audioContext.createBiquadFilter();
+          filters.presence.type = 'peaking';
+          filters.presence.frequency.value = 1400;
+          filters.presence.Q.value = .8;
+          filters.air = audioContext.createBiquadFilter();
+          filters.air.type = 'highshelf';
+          filters.air.frequency.value = 3600;
+          filters.shaper = audioContext.createWaveShaper();
+          filters.shaper.oversample = '2x';
+          volumeNode = audioContext.createGain();
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 1024;
+          robotOscillator = audioContext.createOscillator();
+          robotOscillator.type = 'sine';
+          robotOscillator.frequency.value = 34;
+          robotDepth = audioContext.createGain();
+          robotDepth.gain.value = 0;
+          robotOscillator.connect(robotDepth);
+          robotDepth.connect(volumeNode.gain);
+          source.connect(filters.tone).connect(filters.presence).connect(filters.air)
+            .connect(filters.shaper).connect(volumeNode).connect(analyser).connect(audioContext.destination);
+          robotOscillator.start();
+          running = true;
+          startedAt = Date.now();
+          button.textContent = '■  Canlı modu durdur';
+          button.classList.add('stop');
+          button.disabled = false;
+          indicator.classList.add('visible');
+          visualLabel.hidden = true;
+          setEffect(document.querySelector('.effect.selected').dataset.effect);
+          timerInterval = setInterval(updateTimer, 1000);
+          resizeCanvas();
+          draw();
+        } catch (error) {
+          await stopAudio();
+          const reason = error && error.name === 'NotAllowedError'
+            ? 'Mikrofon izni verilmedi. Tarayıcı ayarlarından bu site için mikrofon erişimine izin verin.'
+            : error && error.name === 'NotFoundError'
+              ? 'Kullanılabilir mikrofon bulunamadı.'
+              : 'Ses başlatılamadı. Sayfanın HTTPS üzerinde açık ve mikrofonun kullanılabilir olduğundan emin olun.';
+          showError(reason);
+          button.disabled = false;
+          button.textContent = '🎙️  Yeniden dene';
+        }
+      }
+
+      async function stopAudio() {
+        running = false;
+        clearInterval(timerInterval);
+        cancelAnimationFrame(animationFrame);
+        if (robotOscillator) { try { robotOscillator.stop(); } catch (_) {} }
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        if (audioContext && audioContext.state !== 'closed') await audioContext.close();
+        audioContext = stream = source = analyser = volumeNode = robotOscillator = robotDepth = null;
+        filters = {};
+        indicator.classList.remove('visible');
+        visualLabel.hidden = false;
+        visualLabel.textContent = 'Canlı sesi başlatınca dalga burada görünür';
+        timer.textContent = '00:00';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        button.classList.remove('stop');
+        button.textContent = '🎙️  Canlıya al';
+        button.disabled = false;
+      }
+
+      function updateTimer() {
+        const seconds = Math.floor((Date.now() - startedAt) / 1000);
+        timer.textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+      }
+
+      function resizeCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        const ratio = window.devicePixelRatio || 1;
+        canvas.width = Math.round(rect.width * ratio);
+        canvas.height = Math.round(rect.height * ratio);
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      }
+
+      function draw() {
+        if (!running || !analyser) return;
+        animationFrame = requestAnimationFrame(draw);
+        const width = canvas.clientWidth, height = canvas.clientHeight;
+        const values = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteTimeDomainData(values);
+        ctx.clearRect(0, 0, width, height);
+        ctx.lineWidth = 2.2;
+        ctx.strokeStyle = '#a99aff';
+        ctx.shadowBlur = 14;
+        ctx.shadowColor = '#8d79ff88';
+        ctx.beginPath();
+        const step = width / values.length;
+        for (let i = 0; i < values.length; i++) {
+          const y = values[i] / 255 * height;
+          if (i === 0) ctx.moveTo(0, y); else ctx.lineTo(i * step, y);
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      button.addEventListener('click', () => running ? stopAudio() : start());
+      document.querySelectorAll('.effect').forEach(item => item.addEventListener('click', () => setEffect(item.dataset.effect)));
+      volumeSlider.addEventListener('input', () => {
+        volumeValue.textContent = `${volumeSlider.value}%`;
+        if (running) {
+          const isRobot = document.querySelector('[data-effect="robot"]').classList.contains('selected');
+          setParam(volumeNode.gain, Number(volumeSlider.value) / 100 * (isRobot ? .68 : 1));
+        }
+      });
+      window.addEventListener('resize', () => { if (running) resizeCanvas(); });
+      window.addEventListener('pagehide', () => { if (stream) stream.getTracks().forEach(track => track.stop()); });
+    })();
+  </script>
+</body>
+</html>
