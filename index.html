@@ -7,8 +7,7 @@
   <meta name="description" content="Tarayıcında gerçek zamanlı ses efektleri dene. Sesin cihazından çıkmaz.">
   <title>Realtime Voice — Sesini değiştir</title>
   <style>
-
-    :root {
+:root {
       color-scheme: dark;
       --bg: #101016;
       --line: rgba(255, 255, 255, .09);
@@ -769,9 +768,38 @@
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
     }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M4 10v4m4-8v12m4-15v18m4-13v8m4-11v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span>Realtime Voice</span>
+    </div>
+    <div class="header-actions">
+      <span class="local-tag" data-i18n="localTag">●&nbsp; Ses cihazında işlenir</span>
+      <label for="language" hidden data-i18n="languageLabel">Dil</label>
+      <select class="language" id="language" aria-label="Language">
+        <option value="tr">Türkçe</option>
+        <option value="en">English</option>
+        <option value="ru">Русский</option>
+      </select>
+    </div>
+  </header>
 
+  <main>
+    <section class="intro" aria-labelledby="title">
+      <div class="eyebrow" data-i18n="eyebrow">canlı ses stüdyosu</div>
+      <h1 id="title" data-i18n="title">Sesine başka bir<br>hava kat.</h1>
+      <p class="sub" data-i18n="subtitle">Bir efekt seç, mikrofonunu aç ve sesini anında dinle. Kayıt yok; sesin sunucuya gönderilmez.</p>
+    </section>
 
-      <!-- YENİ SESLİ MESAJ STÜDYOSU (V2 MODELİ) -->
+    <!-- YENİ SESLİ MESAJ STÜDYOSU (V2 MODELİ) -->
       <section class="voice-message-section" id="voiceMessageSection">
         <div class="studio-header">
           <div class="studio-title-box">
@@ -869,7 +897,6 @@
         </div>
       </section>
 
-
     <section class="studio" aria-label="Canlı ses değiştirici" data-i18n-aria="studioLabel">
       <div class="visual">
         <canvas id="visualizer" aria-label="Canlı ses dalga görselleştirmesi" data-i18n-aria="visualizerLabel"></canvas>
@@ -922,46 +949,6 @@
       </div>
 
       <div class="message" id="message" role="alert"></div>
-
-      <!-- Sesli Mesaj Oluştur & Paylaş -->
-      <div class="voice-message-section">
-        <div class="section-heading">
-          <h2 data-i18n="voiceMsgHeading">SESLİ MESAJ OLUŞTUR & PAYLAŞ</h2>
-          <span data-i18n="voiceMsgHint">Efektli ses kaydet, arkadaşlarına gönder</span>
-        </div>
-        
-        <div class="record-box">
-          <button class="record-button" id="recordButton" type="button">
-            <span class="rec-pulse-dot" id="recDot" style="display:none;"></span>
-            <span id="recordBtnText" data-i18n="recordButton">🔴 &nbsp; Efektli Sesli Mesaj Kaydet</span>
-          </button>
-          <div class="record-timer" id="recordTimer">
-            <span class="rec-pulse-dot"></span>
-            <span data-i18n="recordingLabel">KAYDEDİLİYOR</span>
-            <span id="recTime">00:00</span>
-          </div>
-        </div>
-
-        <div class="audio-result-card" id="audioResultCard">
-          <div class="result-header">
-            <div class="result-badge" id="resultEffectBadge">🧸 Bebek Sesi</div>
-            <span class="result-duration" id="resultDuration">00:00</span>
-          </div>
-          <audio id="audioPlayer" controls playsinline></audio>
-          <div class="audio-actions">
-            <button class="action-btn share-btn" id="shareBtn" type="button" data-i18n="shareBtn">
-              📤 &nbsp; Herkese Paylaş
-            </button>
-            <button class="action-btn download-btn" id="downloadBtn" type="button" data-i18n="downloadBtn">
-              💾 &nbsp; İndir
-            </button>
-            <button class="action-btn reset-btn" id="resetRecordBtn" type="button" data-i18n="reRecordBtn">
-              🔄 &nbsp; Yeni Kayıt
-            </button>
-          </div>
-        </div>
-      </div>
-
     </section>
 
     <p class="notice">
@@ -977,6 +964,7 @@
 </div>
 
 <!-- Modal: Mobil / APK / İlk Açılış Mikrofon İzni -->
+
 <div class="perm-overlay" id="permOverlay" role="dialog" aria-modal="true" aria-labelledby="permTitle">
   <div class="perm-card">
     <div class="perm-icon">🎙️</div>
@@ -990,8 +978,7 @@
 </div>
 
 <script>
-
-  /* =========================================================
+/* =========================================================
      RealtimeVoice — Audio Engine & Voice Message Studio
      ========================================================= */
 
@@ -2092,7 +2079,6 @@
   } else {
     initApp();
   }
-
 </script>
 </body>
 </html>
